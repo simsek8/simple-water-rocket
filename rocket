@@ -1,0 +1,116 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+""" 
+Roket Teknolojisi
+"""
+__author__ = "Emre Simsek"
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+def RK(f,x0,y0,h):
+    k1 = f(x0,y0)
+    k2 = f(x0 + 0.5*h, y0 + 0.5*k1*h)
+    k3 = f(x0 + 0.5*h, y0 + 0.5*k2*h)
+    k4 = f(x0 + h, y0 + k3*h)
+    y = y0 + (k1 + 2*k2 + 2*k3 + k4)*h/6   # 4. RK
+    return y
+
+Pi = 4*101325
+Patm = 101325
+VolR0 = 1.5e-3 # L -> m^3
+VolW0 = 0.5e-3 # L -> m^3
+VolH0 = VolR0 - VolW0
+mplastik = 0.3 # kg
+Dn = 0.02 # m
+Dr = 0.08 # m
+Cd = 0.5
+dt = 0.001
+xn = 0.4
+An = 0.25*np.pi*Dn*Dn
+A = (np.pi*Dr*Dr/4)*0.34
+rhoH0 = Pi/(287*(273.15+15)) # R=0.287 kPa.m^3/kg.K
+mR = [mplastik+(998.1*VolW0)+(rhoH0*VolH0)]
+mW = [mplastik+(998.1*VolW0)]
+mH = [mplastik+(rhoH0*VolH0)]
+gamma = 1.4
+
+T = [0]
+z = [0]
+P = [Pi]
+V = [0]
+Vj = [np.sqrt( 2*(Pi-Patm)/998.2)]
+mdot = [998.2*An*Vj[0]]
+mdotH = [0]
+vol = [VolR0]
+Fth = [Vj[0]*mdot[0]]
+Fg = [-mR[0]*9.81]
+Fd = [-0.5*Cd*1.225*A*V[0]*V[0]]
+a = [(Fth[0]-Fd-Fg[0])/mR[0]]
+H = [0]
+
+i = 1
+tprime = 0
+while i<1e6:
+    #print("Adım",i)
+    if mR[i-1]<mH[0]:
+        #print("Hava Çıkışı")
+        if mR[i-2]>mH[0]:
+            tprime = i-1
+        T.append(i*dt)
+        H.append(H[i-1]+V[i-1]*dt + 0.5*a[i-1]*dt*dt - 0.5*9.81*dt*dt)
+        V.append(V[i-1]+a[i-1]*dt)
+        new_mR = mR[i-1] - mdot[i-1]*dt
+        mR.append(new_mR)
+        new_P = P[tprime]*((1+(mR[tprime]-mR[i])/(rhoH0*VolR0))**-gamma)
+        P.append( new_P )
+        new_Vj = np.sqrt( 2*(P[i-1]-Patm)/rhoH0 )
+        Vj.append(new_Vj)
+        mdot.append(0)
+        Fth.append(Vj[i]*mdot[i])
+        Fg.append(-mR[i]*9.81)
+        Fd.append(-0.5*Cd*1.225*0.089*V[i])
+        a.append((Fth[i]+Fg[i]+Fd[i])/mR[i])
+        if H[-1] < 0 and len(H) > 2:
+            print("Tamamlanan döngü sayısı",i)
+            break
+    elif mR[i-1]>mH[0]:
+        #print("Su Çıkışı")
+        T.append(i*dt)
+        H.append(H[i-1]+V[i-1]*dt + 0.5*a[i-1]*dt*dt - 0.5*9.81*dt*dt)
+        V.append(V[i-1]+a[i-1]*dt)
+        new_mR = mR[i-1] - mdot[i-1]*dt
+        mR.append(new_mR)
+        new_P = P[0]*((1+(mR[0]-mR[i])/(998.2*VolH0))**-gamma)
+        P.append( new_P )
+        new_Vj = np.sqrt( 2*(P[i]-Patm)/998.2 )
+        Vj.append(new_Vj)
+        mdot.append(998.2*An*Vj[i])
+        mdotH.append(0)
+        mH.append(0)
+        Fth.append(Vj[i]*mdot[i])
+        Fg.append(-mR[i]*9.81)
+        Fd.append(-0.5*Cd*1.225*0.089*V[i])
+        a.append((Fth[i]+Fg[i]+Fd[i])/mR[i])
+    i += 1 
+    
+plt.figure(1)
+plt.plot(T,H,color='blue',linestyle='-',marker='',label='H')
+plt.plot(T,V,color='red',linestyle='-',marker='',label='V')
+plt.xlabel('t [s]',fontsize=14)
+plt.axhline(y=0, color='k')
+plt.ylabel('H [m]',fontsize=14)
+plt.title('Roket Hızının Yükseklikle Değişimi',fontsize=14)
+plt.legend(loc='upper right',fontsize=11)
+
+plt.figure(2)
+plt.plot(T,Fth,color='black',linestyle='-',marker='',label='Fth')
+plt.plot(T,Vj,color='blue',linestyle='-',marker='',label='Vj')
+plt.xlabel('t [s]',fontsize=14)
+plt.ylabel('Fth [N]',fontsize=14)
+plt.title('İtki Kuvveti ve Jet Hızı',fontsize=14)
+plt.xlim(0,0.2)
+plt.legend(loc='upper right',fontsize=11)
+
+print("Uçuş Süresi",T[-1])
+print("Maksimum Yükseklik",max(H))
