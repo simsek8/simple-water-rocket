@@ -1,1 +1,1 @@
-# simple-water-rocket
+# Simple Water Rocket
