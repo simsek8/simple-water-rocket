@@ -1,2 +1,2 @@
 # Simple Water Rocket
-Calculates max. height and velocity. 
+Calculates maximum altitude and velocity of a water rocket.  
